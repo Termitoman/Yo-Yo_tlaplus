@@ -21,8 +21,29 @@ YYTypeOK == nodeState \in [Nodes -> {"Source", "Intermediary", "Sink", "NotProce
 \* INIT
 YYInit == nodeState = [n \in Nodes |-> "NotProcessed"]
 
+directEdgesAsSource(n) == TRUE
+
+directEdgesAsIntermediary(n) == TRUE
+
+directEdgesAsSink(n) == TRUE
+
+isSource(n) == /\ \A m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) => (m > n)) \/ (\A e \in Edges : ~(n \in e /\ m \in e))
+               /\ nodeState' = [nodeState EXCEPT ![n] = "Source"]
+               /\ directEdgesAsSource(n)
+    
+isIntermediary(n) == /\ \E m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) /\ m > n)
+                     /\ \E m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) /\ m < n)
+                     /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
+                     /\ directEdgesAsIntermediary(n)
+
+isSink(n) == /\ \A m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) => (m < n)) \/ (\A e \in Edges : ~(n \in e /\ m \in e))
+             /\ nodeState' = [nodeState EXCEPT ![n] = "Sink"]
+             /\ directEdgesAsSink(n)
+
 PreProcess(n) == /\ nodeState[n] = "NotProcessed"
-                 /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
+                 /\ \/ isSource(n)
+                    \/ isIntermediary(n)
+                    \/ isSink(n)
 
 \* NEXT
 YYNext == \E n \in Nodes : PreProcess(n)
