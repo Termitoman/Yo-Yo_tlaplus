@@ -1,7 +1,7 @@
 \* Module qui abstrait l'algorithme d'élection de leader Yo-Yo.
 \* Ecrit par Ludovic Yvoz pour le cours de Vérification Algorithmique
 
----- MODULE YoYo ----
+------------------------ MODULE YoYo ------------------------
 EXTENDS TLC, Integers, FiniteSets
 
 \* Nodes : l'ensemble des nodes du graphe
@@ -15,12 +15,12 @@ ASSUME  /\ Nodes \subseteq Int
         /\ \A e \in Edges : Cardinality(e) = 2  \* en particulier cela exclut des auto-boucles
         \*/\ \A n \in Nodes : \E m \in Nodes : \E e \in Edges : ~(n = m) /\ (\E x \in e : \E y \in e : ~(x = y) /\ x = n /\ y = m)
 
-\* nodeState : Pour chaque node, son état actuel (Source, Sink, InteNodesediary, NotProcessed)
+\* nodeState : Pour chaque node, son état actuel (Source, Sink, Intermediary, NotProcessed)
 \* nodesEntering : Pour chaque node, l'ensemble des nodes qui entrent dans ce node (arêtes orientées vers ce node)
 \* nodesLeaving : Pour chaque node, l'ensemble des nodes qui sortent de ce node (arêtes orientées depuis ce node)
 VARIABLE nodeState, nodesEntering, nodesLeaving
 
-------------------------------------------------------------
+-------------------------------------------------------------
 
 \* Vérifie que les variables restent dans un état correct
 YYTypeOK == /\ nodeState \in [Nodes -> {"Source", "Intermediary", "Sink", "NotProcessed"}]
@@ -32,7 +32,7 @@ YYInit == /\ nodeState = [n \in Nodes |-> "NotProcessed"]
           /\ nodesEntering = [n \in Nodes |-> {}]
           /\ nodesLeaving = [n \in Nodes |-> {}]
 
-------------------------------------------------------------
+-------------------------------------------------------------
 
 \* On dirige les arêtes d'une source lors du préprocessing
 directEdgesAsSource(n) == /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = {m \in Nodes : \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
@@ -70,10 +70,10 @@ PreProcess(n) == /\ nodeState[n] = "NotProcessed"
                     \/ Intermediary(n)
                     \/ Sink(n)
 
-------------------------------------------------------------
+-------------------------------------------------------------
 
 
 \* Définition du prochain état
 YYNext == \E n \in Nodes : PreProcess(n)
 
-====
+=============================================================
