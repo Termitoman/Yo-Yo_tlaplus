@@ -13,12 +13,18 @@ ASSUME  /\ Nodes \subseteq Int
         /\ \A e \in Edges : Cardinality(e) = 2  \* en particulier cela exclut des auto-boucles
         \*/\ \A n \in Nodes : \E m \in Nodes : \E e \in Edges : ~(n = m) /\ (\E x \in e : \E y \in e : ~(x = y) /\ x = n /\ y = m)
 
-VARIABLE a
+\* nodeState : Pour chaque node, son état actuel (Source, Sink, InteNodesediary, NotProcessed)
+VARIABLE nodeState
+------------------------------------------------------------
+YYTypeOK == nodeState \in [Nodes -> {"Source", "Intermediary", "Sink", "NotProcessed"}]
 
 \* INIT
-YYInit == a = 0
+YYInit == nodeState = [n \in Nodes |-> "NotProcessed"]
+
+Preprocess(n) == /\ nodeState[n] = "NotProcessed"
+                 /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
 
 \* NEXT
-YYNext == a' = a
+YYNext == \E n \in Nodes : PreProcess(n)
 
 ====
