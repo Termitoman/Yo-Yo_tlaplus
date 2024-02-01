@@ -21,7 +21,7 @@ YYTypeOK == nodeState \in [Nodes -> {"Source", "Intermediary", "Sink", "NotProce
 \* INIT
 YYInit == nodeState = [n \in Nodes |-> "NotProcessed"]
 
-Preprocess(n) == /\ nodeState[n] = "NotProcessed"
+PreProcess(n) == /\ nodeState[n] = "NotProcessed"
                  /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
 
 \* NEXT

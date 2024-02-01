@@ -1,6 +1,9 @@
 ---- MODULE MCYoYo ----
 EXTENDS Integers
-Nodes == 1 .. 3
+
+CONSTANT NbNodes
+
+Nodes == 1 .. NbNodes
 Edges == { {1,3}, {2,3} }
 
 VARIABLE nodeState
