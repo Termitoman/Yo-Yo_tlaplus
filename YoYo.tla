@@ -111,6 +111,51 @@ YoPhase(n) == /\ \A node \in Nodes : nodeState[node] # "NotProcessed"
 
 -------------------------------------------------------------
 
+\* Vérifie que tous les sink ont reçus un message de toutes leurs entrées
+SinksHaveReceived(n) == \A node \in Nodes : nodeState[node] = "Sink" => \A m \in nodesEntering[node] : \E msg \in msgs[node] : msg.node = m
+
+\* Envoi des messages de sink
+\* Chaque sink envoie un message "YES" à la node entrante lui ayant envoyé un message avec la plus petite valeur et un message "NO" aux autres
+SendYesNoSink(n) == /\ nodeState[n] = "Sink"
+                    /\ \A m \in nodesEntering[n] : 
+                        LET msg_m == CHOOSE msg_tmp \in msgs[n] : msg_tmp.node = m
+                        IN msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg_m.val THEN "YES" ELSE "NO"]}]
+
+\* Envoi du message "YES" et des messages "NO" d'un intermédiaire
+IntermediaryYes(n) == /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "YES"
+                      /\ \A m \in nodesEntering[n] :
+                        LET msg_m == CHOOSE msg_tmp \in msgs[n] : msg_tmp.node = m
+                        IN msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg_m.val THEN "YES" ELSE "NO"]}]
+
+\* Envoi des messages "NO" d'un intermédiaire
+IntermediaryNo(n) == /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
+                     /\ \A m \in nodesEntering[n] : msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> "NO"]}]
+
+\* Envoi des messages d'intermédiaire
+\* Si l'intermédiaire à reçu un message de toutes ses sorties, si il à reçu que des "YES", il envoie un message "YES" à la node entrante lui ayant envoyé un message avec la plus petite valeur et un message "NO" aux autres, sinon il envoie "NO" à toutes ses entrées
+SendYesNoIntermediary(n) == /\ nodeState[n] = "Intermediary"
+                             /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m
+                             /\ \/ IntermediaryYes(n)
+                                \/ IntermediaryNo(n)
+
+\* Envoi des messages "YES" et "NO" d'une source
+\* Les sources ne font rien pour cette phase
+SendYesNoSource(n) == /\ nodeState[n] = "Source"
+                      /\ UNCHANGED msgs
+
+\* Etape "-Yo" comme décrit dans la page wikipedia
+\* Cette étape ne se fait que si tous les sink ont reçus un message de toutes leurs entrées
+\* Chaque sink envoie un message "YES" à la node entrante ayant la plus petite valeur et un message "NO" aux autres
+\* Chaque intermédiaire, quand il à reçu un message de toutes ses sorties, envoie un message "YES" à la node entrante ayant valeur correspondante et un message "NO" aux autres
+\* Les sources ne font rien pour cette phase
+DashYoPhase(n) == /\ \A node \in Nodes : nodeState[node] # "NotProcessed"
+                  /\ SinksHaveReceived(n)
+                  /\ \/ SendYesNoSink(n)
+                     \/ SendYesNoIntermediary(n)
+                     \/ SendYesNoSource(n)
+                  /\ UNCHANGED <<nodeState, nodesEntering, nodesLeaving>>
+
+-------------------------------------------------------------
 
 \* Définition du prochain état
 YYNext == \E n \in Nodes : PreProcess(n) \/ YoPhase(n) \/ DashYoPhase(n)
