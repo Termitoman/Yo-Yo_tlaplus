@@ -45,42 +45,38 @@ YYInit ==
 \* On dirige les arêtes d'une source lors du préprocessing
 directEdgesAsSource(n) == 
     /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = 
-        {m \in Nodes : \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
+        {m \in Nodes : \E e \in Edges : e = {n, m}}]
     /\ UNCHANGED nodesEntering
 
 \* On dirige les arêtes d'un intermédiaire lors du préprocessing
 directEdgesAsIntermediary(n) == 
     /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = 
-        {m \in Nodes : (m > n) /\ \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
+        {m \in Nodes : (m > n) /\ \E e \in Edges : e = {n, m}}]
     /\ nodesEntering' = [nodesEntering EXCEPT ![n] = 
-        {m \in Nodes : (m < n) /\ \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
+        {m \in Nodes : (m < n) /\ \E e \in Edges : e = {n, m}}]
 
 \* On dirige les arêtes d'un sink lors du préprocessing
 directEdgesAsSink(n) == 
     /\ nodesEntering' = [nodesEntering EXCEPT ![n] = 
-        {m \in Nodes : \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
+        {m \in Nodes : \E e \in Edges : (e = {n, m})}]
     /\ UNCHANGED nodesLeaving
 
 \* On définit la node comme source si elle n'a pas de node entrant
 Source(n) == 
-    /\ (\A m \in Nodes : 
-        (\E e \in Edges : (e = {n, m} \/ e = {m, n}) => (m > n)) 
-        \/ (\A e \in Edges : ~(n \in e /\ m \in e)))
+    /\ \A m \in Nodes : \A m \in Nodes : {m,n} \in Edges => m > n
     /\ nodeState' = [nodeState EXCEPT ![n] = "Source"]
     /\ directEdgesAsSource(n)
 
 \* On définit la node comme intermédiaire si elle a des nodes entrants et sortants
 Intermediary(n) == 
-    /\ \E m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) /\ m > n)
-    /\ \E m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) /\ m < n)
+    /\ \E m \in Nodes : (\E e \in Edges : e = {n, m} /\ m > n)
+    /\ \E m \in Nodes : (\E e \in Edges : e = {n, m} /\ m < n)
     /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
     /\ directEdgesAsIntermediary(n)
 
 \* On définit la node comme sink si elle n'a pas de node sortant
 Sink(n) == 
-    /\ (\A m \in Nodes : 
-        (\E e \in Edges : (e = {n, m} \/ e = {m, n}) => (m < n)) 
-        \/ (\A e \in Edges : ~(n \in e /\ m \in e)))
+    /\ \A m \in Nodes : \A m \in Nodes : {m,n} \in Edges => m < n
     /\ nodeState' = [nodeState EXCEPT ![n] = "Sink"]
     /\ directEdgesAsSink(n)
 
