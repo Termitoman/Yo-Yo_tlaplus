@@ -47,15 +47,6 @@ YYInit ==
                     ELSE "Intermediary"]
     /\ msgs = [n \in Nodes |-> {}]
 
-\* Etape de pré-traitement comme décrit dans la page wikipedia
-\* Chaque node passe de l'état NotProcessed à l'état Source, Sink ou Intermediary
-\* Chaque arête est orientée de la source vers le sink
-PreProcess(n) == 
-    /\ nodeState[n] = "NotProcessed"
-    /\  \/ Source(n)
-        \/ Intermediary(n)
-        \/ Sink(n)
-    /\ UNCHANGED msgs
 
 -------------------------------------------------------------
 
@@ -90,7 +81,6 @@ EnvoiIDSink(n) ==
 \* Chaque intermédiaire envoie un message contenant l'ID de la source (minimum entre tous les entrants) à chaque node sortant
 \* Les sink ne font rien pour cette phase
 YoPhase(n) == 
-    /\  \A node \in Nodes : nodeState[node] # "NotProcessed"
     /\  \/ EnvoiIDSource(n)
         \/ EnvoiIDIntermediary(n)
         \/ EnvoiIDSink(n)
@@ -147,7 +137,6 @@ SendYesNoSource(n) ==
 \* Chaque intermédiaire, quand il à reçu un message de toutes ses sorties, envoie un message "YES" à la node entrante ayant valeur correspondante et un message "NO" aux autres
 \* Les sources ne font rien pour cette phase
 DashYoPhase(n) == 
-    /\ \A node \in Nodes : nodeState[node] # "NotProcessed"
     /\ SinksHaveReceived(n)
     /\  \/ SendYesNoSink(n)
         \/ SendYesNoIntermediary(n)
@@ -156,7 +145,73 @@ DashYoPhase(n) ==
 
 -------------------------------------------------------------
 
+\* Vérifie que toutes les sources ont reçus un message de toutes leurs sorties
+SourcesHaveReceived(n) == \A node \in Nodes : nodeState[node] = "Source" => \A m \in nodesLeaving[node] : \E msg \in msgs[node] : msg.node = m
+
+\* Etape de restructuration pour les sources
+\* Chaque source qui n'a reçu que des messages "NO" devient un sink
+\* Chaque source qui a reçu au moins un message "NO" et un message "YES" devient un intermédiaire
+\* Chaque source qui a reçu que des messages "YES" reste une source
+\* Les nodes entrantes et sortantes sont recalculées
+SourceRestructuration(n) == 
+    /\ nodeState[n] = "Source"
+    /\  \/  /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type # "NO"
+            /\ UNCHANGED << nodeState, nodesEntering, nodesLeaving >>
+        \/  /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type # "YES"
+            /\ nodeState' = [nodeState EXCEPT ![n] = "Sink"]
+            /\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n]]
+            /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = {}]
+        \/  /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "YES"
+            /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
+            /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
+            /\ LET yesNodes == {msg.val : msg \in {m \in msgs[n] : m.type = "YES"}}
+                IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n] \ yesNodes]
+                    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = yesNodes])
+
+\* Etape de restructuration pour les intermédiaires
+\* Chaque intermédiaire qui à reçu que des NO echange ses entrées et sorties
+\* Chaque intermédiaire qui à reçu un message YES échange toutes ses entrées et sorties ayant transporté un message NO
+IntermediaryRestructuration(n) ==
+    /\ nodeState[n] = "Intermediary"
+    /\  \/  /\ \E m \in nodesEntering[n] : \E msg \in msgs[m] : msg.node = n /\ msg.type = "YES"
+            /\ LET noNodes == {msg.val : msg \in {m \in msgs[n] : m.type = "NO"}} \cup {m \in nodesEntering[n] : \E msg \in msgs[m] : msg.node = n /\ msg.type = "NO"}
+                IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = (nodesEntering[n] \ noNodes) \cup (nodesLeaving[n] \intersect noNodes)]
+                    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = (nodesLeaving[n] \ noNodes) \cup (nodesEntering[n] \intersect noNodes)])
+        \/  /\ \A m \in nodesEntering[n] : \E msg \in msgs[m] : msg.node = n /\ msg.type = "NO"
+            /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
+            /\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n]]
+            /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesEntering[n]]
+    /\ UNCHANGED nodeState
+
+\* Etape de restructuration pour les sinks
+\* Chaque sink qui a plus d'1 node entrante devient un intermédiaire, toutes les nodes avec un message NO passent en nodes sortante
+\* Chaque sink qui a 1 seule node entrante reste un sink
+SinkRestructuration(n) == 
+    /\ nodeState[n] = "Sink"
+    /\  \/  /\ Cardinality(nodesEntering[n]) > 1
+            /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
+            /\ LET noNodes == {m \in nodesEntering[n] : \E msg \in msgs[m] : msg.node = n /\ msg.type = "NO"}
+                IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesEntering[n] \ noNodes]
+                    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = noNodes])
+        \/  /\ Cardinality(nodesEntering[n]) = 1
+            /\ UNCHANGED << nodeState, nodesLeaving, nodesEntering >>
+
+\* Etape de restructuration comme décrit dans la page wikipedia
+\* Cette phase ne peut se faire que si toutes les sources ont reçut un message de toutes leurs sorties
+\* Chaque source qui a reçu un message "NO" devient un sink ou un intermédiaire
+\* Chaque sink qui a plus d'1 node entrante devient un intermédiaire
+\* Les intermédiaires restent des intermédiaires
+\* Chaque arête qui a reçu un message "NO" est inversée, ce qui implique que chaque node change ses entrées et sorties en consequence
+Restructuration(n) == 
+    /\ SourcesHaveReceived(n)
+    /\  \/ SinkRestructuration(n)
+        \/ IntermediaryRestructuration(n)
+        \/ SourceRestructuration(n)
+    /\ UNCHANGED msgs
+
+-------------------------------------------------------------
+
 \* Définition du prochain état
-YYNext == \E n \in Nodes : YoPhase(n) \/ DashYoPhase(n)
+YYNext == \E n \in Nodes : YoPhase(n) \/ DashYoPhase(n) \/ Restructuration(n)
 
 =============================================================
