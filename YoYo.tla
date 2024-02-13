@@ -28,57 +28,24 @@ Messages == [node : Nodes, val : Nodes]  \cup  [node : Nodes, type : {"YES", "NO
 
 \* Vérifie que les variables restent dans un état correct
 YYTypeOK == 
-    /\ nodeState \in [Nodes -> {"Source", "Intermediary", "Sink", "NotProcessed"}]
+    /\ nodeState \in [Nodes -> {"Source", "Intermediary", "Sink"}]
     /\ nodesEntering \in [Nodes -> SUBSET Nodes]
     /\ nodesLeaving \in [Nodes -> SUBSET Nodes]
     /\ msgs \in [Nodes -> SUBSET Messages]
 
-\* Initialisation des variables
+\* Définit l'ensemble des nodes voisins d'un node
+Neighbors(n) == {m \in Nodes : {m,n} \in Edges}
+
+\* Initialisation des variables et préprocessing
+\* On effectue le préprocessing de façon synchrone car cette phase n'est pas très intéressante
 YYInit == 
-    /\ nodeState = [n \in Nodes |-> "NotProcessed"]
-    /\ nodesEntering = [n \in Nodes |-> {}]
-    /\ nodesLeaving = [n \in Nodes |-> {}]
-    /\ msgs = [node \in Nodes |-> {}]
-
--------------------------------------------------------------
-
-\* On dirige les arêtes d'une source lors du préprocessing
-directEdgesAsSource(n) == 
-    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = 
-        {m \in Nodes : \E e \in Edges : e = {n, m}}]
-    /\ UNCHANGED nodesEntering
-
-\* On dirige les arêtes d'un intermédiaire lors du préprocessing
-directEdgesAsIntermediary(n) == 
-    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = 
-        {m \in Nodes : (m > n) /\ \E e \in Edges : e = {n, m}}]
-    /\ nodesEntering' = [nodesEntering EXCEPT ![n] = 
-        {m \in Nodes : (m < n) /\ \E e \in Edges : e = {n, m}}]
-
-\* On dirige les arêtes d'un sink lors du préprocessing
-directEdgesAsSink(n) == 
-    /\ nodesEntering' = [nodesEntering EXCEPT ![n] = 
-        {m \in Nodes : \E e \in Edges : (e = {n, m})}]
-    /\ UNCHANGED nodesLeaving
-
-\* On définit la node comme source si elle n'a pas de node entrant
-Source(n) == 
-    /\ \A m \in Nodes : \A m \in Nodes : {m,n} \in Edges => m > n
-    /\ nodeState' = [nodeState EXCEPT ![n] = "Source"]
-    /\ directEdgesAsSource(n)
-
-\* On définit la node comme intermédiaire si elle a des nodes entrants et sortants
-Intermediary(n) == 
-    /\ \E m \in Nodes : (\E e \in Edges : e = {n, m} /\ m > n)
-    /\ \E m \in Nodes : (\E e \in Edges : e = {n, m} /\ m < n)
-    /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
-    /\ directEdgesAsIntermediary(n)
-
-\* On définit la node comme sink si elle n'a pas de node sortant
-Sink(n) == 
-    /\ \A m \in Nodes : \A m \in Nodes : {m,n} \in Edges => m < n
-    /\ nodeState' = [nodeState EXCEPT ![n] = "Sink"]
-    /\ directEdgesAsSink(n)
+    /\ nodesEntering = [n \in Nodes |-> { m \in Neighbors(n) : m < n}]
+    /\ nodesLeaving = [n \in Nodes |-> { m \in Neighbors(n) : m > n}]
+    /\ nodeState = [n \in Nodes |-> 
+                    IF nodesEntering[n] = Neighbors(n) THEN "Sink"
+                    ELSE IF nodesLeaving[n] = Neighbors(n) THEN "Source"
+                    ELSE "Intermediary"]
+    /\ msgs = [n \in Nodes |-> {}]
 
 \* Etape de pré-traitement comme décrit dans la page wikipedia
 \* Chaque node passe de l'état NotProcessed à l'état Source, Sink ou Intermediary
@@ -190,6 +157,6 @@ DashYoPhase(n) ==
 -------------------------------------------------------------
 
 \* Définition du prochain état
-YYNext == \E n \in Nodes : PreProcess(n) \/ YoPhase(n) \/ DashYoPhase(n)
+YYNext == \E n \in Nodes : YoPhase(n) \/ DashYoPhase(n)
 
 =============================================================
