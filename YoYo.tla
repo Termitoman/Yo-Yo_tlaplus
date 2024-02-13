@@ -27,55 +27,72 @@ Messages == [node : Nodes, val : Nodes]  \cup  [node : Nodes, type : {"YES", "NO
 -------------------------------------------------------------
 
 \* Vérifie que les variables restent dans un état correct
-YYTypeOK == /\ nodeState \in [Nodes -> {"Source", "Intermediary", "Sink", "NotProcessed"}]
-            /\ nodesEntering \in [Nodes -> SUBSET Nodes]
-            /\ nodesLeaving \in [Nodes -> SUBSET Nodes]
-            /\ msgs \in [Nodes -> SUBSET Messages]
+YYTypeOK == 
+    /\ nodeState \in [Nodes -> {"Source", "Intermediary", "Sink", "NotProcessed"}]
+    /\ nodesEntering \in [Nodes -> SUBSET Nodes]
+    /\ nodesLeaving \in [Nodes -> SUBSET Nodes]
+    /\ msgs \in [Nodes -> SUBSET Messages]
 
 \* Initialisation des variables
-YYInit == /\ nodeState = [n \in Nodes |-> "NotProcessed"]
-          /\ nodesEntering = [n \in Nodes |-> {}]
-          /\ nodesLeaving = [n \in Nodes |-> {}]
-          /\ msgs = [node \in Nodes |-> {}]
+YYInit == 
+    /\ nodeState = [n \in Nodes |-> "NotProcessed"]
+    /\ nodesEntering = [n \in Nodes |-> {}]
+    /\ nodesLeaving = [n \in Nodes |-> {}]
+    /\ msgs = [node \in Nodes |-> {}]
 
 -------------------------------------------------------------
 
 \* On dirige les arêtes d'une source lors du préprocessing
-directEdgesAsSource(n) == /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = {m \in Nodes : \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
-                          /\ UNCHANGED nodesEntering
+directEdgesAsSource(n) == 
+    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = 
+        {m \in Nodes : \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
+    /\ UNCHANGED nodesEntering
 
 \* On dirige les arêtes d'un intermédiaire lors du préprocessing
-directEdgesAsIntermediary(n) == /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = {m \in Nodes : (m > n) /\ \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
-                                /\ nodesEntering' = [nodesEntering EXCEPT ![n] = {m \in Nodes : (m < n) /\ \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
+directEdgesAsIntermediary(n) == 
+    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = 
+        {m \in Nodes : (m > n) /\ \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
+    /\ nodesEntering' = [nodesEntering EXCEPT ![n] = 
+        {m \in Nodes : (m < n) /\ \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
 
 \* On dirige les arêtes d'un sink lors du préprocessing
-directEdgesAsSink(n) == /\ nodesEntering' = [nodesEntering EXCEPT ![n] = {m \in Nodes : \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
-                        /\ UNCHANGED nodesLeaving
+directEdgesAsSink(n) == 
+    /\ nodesEntering' = [nodesEntering EXCEPT ![n] = 
+        {m \in Nodes : \E e \in Edges : (e = {n, m} \/ e = {m, n})}]
+    /\ UNCHANGED nodesLeaving
 
 \* On définit la node comme source si elle n'a pas de node entrant
-Source(n) == /\ (\A m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) => (m > n)) \/ (\A e \in Edges : ~(n \in e /\ m \in e)))
-             /\ nodeState' = [nodeState EXCEPT ![n] = "Source"]
-             /\ directEdgesAsSource(n)
+Source(n) == 
+    /\ (\A m \in Nodes : 
+        (\E e \in Edges : (e = {n, m} \/ e = {m, n}) => (m > n)) 
+        \/ (\A e \in Edges : ~(n \in e /\ m \in e)))
+    /\ nodeState' = [nodeState EXCEPT ![n] = "Source"]
+    /\ directEdgesAsSource(n)
 
 \* On définit la node comme intermédiaire si elle a des nodes entrants et sortants
-Intermediary(n) == /\ \E m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) /\ m > n)
-                   /\ \E m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) /\ m < n)
-                   /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
-                   /\ directEdgesAsIntermediary(n)
+Intermediary(n) == 
+    /\ \E m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) /\ m > n)
+    /\ \E m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) /\ m < n)
+    /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
+    /\ directEdgesAsIntermediary(n)
 
 \* On définit la node comme sink si elle n'a pas de node sortant
-Sink(n) == /\ (\A m \in Nodes : (\E e \in Edges : (e = {n, m} \/ e = {m, n}) => (m < n)) \/ (\A e \in Edges : ~(n \in e /\ m \in e)))
-           /\ nodeState' = [nodeState EXCEPT ![n] = "Sink"]
-           /\ directEdgesAsSink(n)
+Sink(n) == 
+    /\ (\A m \in Nodes : 
+        (\E e \in Edges : (e = {n, m} \/ e = {m, n}) => (m < n)) 
+        \/ (\A e \in Edges : ~(n \in e /\ m \in e)))
+    /\ nodeState' = [nodeState EXCEPT ![n] = "Sink"]
+    /\ directEdgesAsSink(n)
 
 \* Etape de pré-traitement comme décrit dans la page wikipedia
 \* Chaque node passe de l'état NotProcessed à l'état Source, Sink ou Intermediary
 \* Chaque arête est orientée de la source vers le sink
-PreProcess(n) == /\ nodeState[n] = "NotProcessed"
-                 /\ \/ Source(n)
-                    \/ Intermediary(n)
-                    \/ Sink(n)
-                 /\ UNCHANGED msgs
+PreProcess(n) == 
+    /\ nodeState[n] = "NotProcessed"
+    /\  \/ Source(n)
+        \/ Intermediary(n)
+        \/ Sink(n)
+    /\ UNCHANGED msgs
 
 -------------------------------------------------------------
 
@@ -84,76 +101,95 @@ Min(set) == CHOOSE x \in set : \A y \in set : x <= y
 
 \* Envoi des messages de source
 \* Chaque source envoie un message contenant son ID à chaque node sortant
-EnvoiIDSource(n) == /\ nodeState[n] = "Source"
-                    /\ \A m \in nodesLeaving[n] : msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, val |-> n]}]
+EnvoiIDSource(n) == 
+    /\ nodeState[n] = "Source"
+    /\ \A m \in nodesLeaving[n] : 
+        msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, val |-> n]}]
 
 \* Envoi des messages d'intermédiaire
 \* Si l'intermédiaire à reçu un message de toutes ses entrées, il envoie un message contenant l'ID minimum à chaque node sortant
-EnvoiIDIntermediary(n) == /\ nodeState[n] = "Intermediary"
-                          /\ \A m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m
-                          /\ \A m \in nodesLeaving[n] : msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, val |-> Min({msg.type : msg \in msgs[n]})]}]
+EnvoiIDIntermediary(n) == 
+    /\ nodeState[n] = "Intermediary"
+    /\ \A m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m
+    /\ \A m \in nodesLeaving[n] : 
+        msgs' = [msgs EXCEPT ![m] = 
+            msgs[m] \cup {[node |-> n, val |-> Min({msg.type : msg \in msgs[n]})]}]
 
 \* Envoi des messages de sink
 \* Les sink ne font rien pour cette phase
-EnvoiIDSink(n) == /\ nodeState[n] = "Sink"
-                  /\ UNCHANGED msgs
+EnvoiIDSink(n) == 
+    /\ nodeState[n] = "Sink"
+    /\ UNCHANGED msgs
 
 \* Etape "Yo" comme décrit dans la page wikipedia
 \* Cette étape ne se fait que si toutes les nodes ont fini l'étape de pré-traitement
 \* Chaque source envoie un message contenant son ID à chaque node sortant
 \* Chaque intermédiaire envoie un message contenant l'ID de la source (minimum entre tous les entrants) à chaque node sortant
 \* Les sink ne font rien pour cette phase
-YoPhase(n) == /\ \A node \in Nodes : nodeState[node] # "NotProcessed"
-              /\ \/ EnvoiIDSource(n)
-                 \/ EnvoiIDIntermediary(n)
-                 \/ EnvoiIDSink(n)
-              /\ UNCHANGED <<nodeState, nodesEntering, nodesLeaving>>
+YoPhase(n) == 
+    /\  \A node \in Nodes : nodeState[node] # "NotProcessed"
+    /\  \/ EnvoiIDSource(n)
+        \/ EnvoiIDIntermediary(n)
+        \/ EnvoiIDSink(n)
+    /\ UNCHANGED <<nodeState, nodesEntering, nodesLeaving>>
 
 -------------------------------------------------------------
 
 \* Vérifie que tous les sink ont reçus un message de toutes leurs entrées
-SinksHaveReceived(n) == \A node \in Nodes : nodeState[node] = "Sink" => \A m \in nodesEntering[node] : \E msg \in msgs[node] : msg.node = m
+SinksHaveReceived(n) == 
+    \A node \in Nodes : nodeState[node] = "Sink" => \A m \in nodesEntering[node] : \E msg \in msgs[node] : msg.node = m
 
 \* Envoi des messages de sink
 \* Chaque sink envoie un message "YES" à la node entrante lui ayant envoyé un message avec la plus petite valeur et un message "NO" aux autres
-SendYesNoSink(n) == /\ nodeState[n] = "Sink"
-                    /\ \A m \in nodesEntering[n] : 
-                        LET msg_m == CHOOSE msg_tmp \in msgs[n] : msg_tmp.node = m
-                        IN msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg_m.val THEN "YES" ELSE "NO"]}]
+SendYesNoSink(n) == 
+    /\ nodeState[n] = "Sink"
+    /\ \A m \in nodesEntering[n] : 
+        LET msg_m == CHOOSE msg_tmp \in msgs[n] : msg_tmp.node = m
+        IN msgs' = [msgs EXCEPT ![m] = 
+            msgs[m] \cup {[node |-> n, type |-> 
+                IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg_m.val 
+                THEN "YES" ELSE "NO"]}]
 
 \* Envoi du message "YES" et des messages "NO" d'un intermédiaire
-IntermediaryYes(n) == /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "YES"
-                      /\ \A m \in nodesEntering[n] :
-                        LET msg_m == CHOOSE msg_tmp \in msgs[n] : msg_tmp.node = m
-                        IN msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg_m.val THEN "YES" ELSE "NO"]}]
+IntermediaryYes(n) == 
+    /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "YES"
+    /\ \A m \in nodesEntering[n] :
+        LET msg_m == CHOOSE msg_tmp \in msgs[n] : msg_tmp.node = m
+        IN msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> 
+            IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg_m.val 
+            THEN "YES" ELSE "NO"]}]
 
 \* Envoi des messages "NO" d'un intermédiaire
-IntermediaryNo(n) == /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
-                     /\ \A m \in nodesEntering[n] : msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> "NO"]}]
+IntermediaryNo(n) == 
+    /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
+    /\ \A m \in nodesEntering[n] : msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> "NO"]}]
 
 \* Envoi des messages d'intermédiaire
 \* Si l'intermédiaire à reçu un message de toutes ses sorties, si il à reçu que des "YES", il envoie un message "YES" à la node entrante lui ayant envoyé un message avec la plus petite valeur et un message "NO" aux autres, sinon il envoie "NO" à toutes ses entrées
-SendYesNoIntermediary(n) == /\ nodeState[n] = "Intermediary"
-                             /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m
-                             /\ \/ IntermediaryYes(n)
-                                \/ IntermediaryNo(n)
+SendYesNoIntermediary(n) == 
+    /\ nodeState[n] = "Intermediary"
+    /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m
+    /\  \/ IntermediaryYes(n)
+        \/ IntermediaryNo(n)
 
 \* Envoi des messages "YES" et "NO" d'une source
 \* Les sources ne font rien pour cette phase
-SendYesNoSource(n) == /\ nodeState[n] = "Source"
-                      /\ UNCHANGED msgs
+SendYesNoSource(n) == 
+    /\ nodeState[n] = "Source"
+    /\ UNCHANGED msgs
 
 \* Etape "-Yo" comme décrit dans la page wikipedia
 \* Cette étape ne se fait que si tous les sink ont reçus un message de toutes leurs entrées
 \* Chaque sink envoie un message "YES" à la node entrante ayant la plus petite valeur et un message "NO" aux autres
 \* Chaque intermédiaire, quand il à reçu un message de toutes ses sorties, envoie un message "YES" à la node entrante ayant valeur correspondante et un message "NO" aux autres
 \* Les sources ne font rien pour cette phase
-DashYoPhase(n) == /\ \A node \in Nodes : nodeState[node] # "NotProcessed"
-                  /\ SinksHaveReceived(n)
-                  /\ \/ SendYesNoSink(n)
-                     \/ SendYesNoIntermediary(n)
-                     \/ SendYesNoSource(n)
-                  /\ UNCHANGED <<nodeState, nodesEntering, nodesLeaving>>
+DashYoPhase(n) == 
+    /\ \A node \in Nodes : nodeState[node] # "NotProcessed"
+    /\ SinksHaveReceived(n)
+    /\  \/ SendYesNoSink(n)
+        \/ SendYesNoIntermediary(n)
+        \/ SendYesNoSource(n)
+    /\ UNCHANGED <<nodeState, nodesEntering, nodesLeaving>>
 
 -------------------------------------------------------------
 
