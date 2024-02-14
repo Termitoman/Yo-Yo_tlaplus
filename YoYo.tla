@@ -22,7 +22,7 @@ ASSUME  /\ Nodes \subseteq Int
 VARIABLE nodeState, nodesEntering, nodesLeaving, msgs
 
 \* Messages : L'ensemble des messages possibles entre nodes
-Messages == [node : Nodes, val : Nodes]  \cup  [node : Nodes, type : {"YES", "NO"}]
+Messages == [node : Nodes, val : Nodes, phase : {"Yo", "-Yo"}]  \cup  [node : Nodes, type : {"YES", "NO"}, phase : {"Yo", "-Yo"}]
 
 -------------------------------------------------------------
 
@@ -55,18 +55,27 @@ Min(set) == CHOOSE x \in set : \A y \in set : x <= y
 
 \* Envoi des messages de source
 \* Chaque source envoie un message contenant son ID à chaque node sortant
+\* Cette phase ne s'exécute que si la source n'a pas de messages contenant de phase 2 et que les sorties n'ont pas de messages de la part de la node n
 EnvoiIDSource(n) == 
     /\ nodeState[n] = "Source"
+    /\ LET msgsDashYoPhase == {msg \in msgs[n] : msg.phase = "-Yo"} 
+       IN (msgsDashYoPhase = {})
+    /\ \A m \in nodesLeaving[n] : \A msg \in msgs[m] : msg.node # n
     /\ msgs' = [m \in Nodes |-> 
-        IF m \in nodesLeaving[n] THEN msgs[m] \cup {[node |-> n, val |-> n]} ELSE msgs[m]]
+        IF m \in nodesLeaving[n] THEN msgs[m] \cup {[node |-> n, val |-> n, phase |-> "Yo"]} ELSE msgs[m]]
 
 \* Envoi des messages d'intermédiaire
 \* Si l'intermédiaire à reçu un message de toutes ses entrées, il envoie un message contenant l'ID minimum à chaque node sortant
+\* Cette phase ne s'éxécute que si l'intermédiaire à reçu un message de toutes ses entrées et que les sorties n'ont pas de messages de la part de la node n
 EnvoiIDIntermediary(n) == 
     /\ nodeState[n] = "Intermediary"
     /\ \A m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m
+    /\ \A m \in nodesLeaving[n] : \A msg \in msgs[m] : msg.node # n
     /\ msgs' = [m \in Nodes |-> 
-        IF m \in nodesLeaving[n] THEN msgs[m] \cup {[node |-> n, val |-> Min({msg.val : msg \in msgs[n]})]} ELSE msgs[m]]
+        IF m \in nodesLeaving[n] THEN msgs[m] \cup {[node |-> n, val |-> 
+            LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo"}
+            IN (Min({msg.val : msg \in msgsYoPhase})), 
+        phase |-> "Yo"]} ELSE msgs[m]]
 
 \* Envoi des messages de sink
 \* Les sink ne font rien pour cette phase
@@ -87,128 +96,89 @@ YoPhase(n) ==
 
 -------------------------------------------------------------
 
-\* Vérifie que tous les sink ont reçus un message de toutes leurs entrées
-SinksHaveReceived(n) == 
-    \A node \in Nodes : nodeState[node] = "Sink" => \A m \in nodesEntering[node] : \E msg \in msgs[node] : msg.node = m
-
 \* Envoi des messages de sink
+\* Le sink n'effectue la phase que si il à reçu un message de toutes ses entrées
 \* Chaque sink envoie un message "YES" à la node entrante lui ayant envoyé un message avec la plus petite valeur et un message "NO" aux autres
-SendYesNoSink(n) == 
+\* Chaque sink inverse les arêtes qui ont transporté un message "NO"
+\* Chaque sink nettoie ses messages quand il à fini
+DashYoSink(n) == 
     /\ nodeState[n] = "Sink"
-    /\ msgs' = [m \in Nodes |-> 
-        IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> 
-            IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg.val 
-            THEN "YES" ELSE "NO"]} ELSE msgs[m]]
-
-\* Envoi du message "YES" et des messages "NO" d'un intermédiaire
-IntermediaryYes(n) == 
-    /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "YES"
-    /\ msgs' = [m \in Nodes |-> 
-        IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> 
-            IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg.val 
-            THEN "YES" ELSE "NO"]} ELSE msgs[m]]
-
-\* Envoi des messages "NO" d'un intermédiaire
-IntermediaryNo(n) == 
-    /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
-    /\ msgs' = [m \in Nodes |-> 
-        IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "NO"]} ELSE msgs[m]]
+    /\ \A m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m
+    /\  \/  /\ Cardinality(nodesEntering[n]) = 1
+            /\ msgs' = [m \in Nodes |-> 
+                IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo"]} 
+                ELSE IF m = n THEN {} ELSE msgs[m]]
+            /\ UNCHANGED << nodeState, nodesEntering, nodesLeaving >>
+        \/  /\ Cardinality(nodesEntering[n]) > 1
+            /\  LET minVal == Min({msg.val : msg \in msgs[n]}) IN
+                    (LET notMinNodes == {m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m /\ msg.val # minVal} IN
+                        (/\ msgs' = [m \in Nodes |-> 
+                            IF m \in notMinNodes THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo"]} 
+                            ELSE IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo"]} 
+                                ELSE IF m = n THEN {} 
+                                    ELSE msgs[m]]
+                        /\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesEntering[n] \ notMinNodes]
+                        /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = notMinNodes]
+                        /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]))
 
 \* Envoi des messages d'intermédiaire
-\* Si l'intermédiaire à reçu un message de toutes ses sorties, si il à reçu que des "YES", il envoie un message "YES" à la node entrante lui ayant envoyé un message avec la plus petite valeur et un message "NO" aux autres, sinon il envoie "NO" à toutes ses entrées
-SendYesNoIntermediary(n) == 
+\* L'intérmédiaire n'effectue la phase que si il à reçu un message de toutes ses sorties
+\* Chaque intermédiaire ayant reçu un "NO" envoie un message "NO" à toutes ses entrées
+\* Chaque intermédiaire ayant reçu que des "YES" envoie un message "YES" à la node entrante lui ayant envoyé la plus petite valeur et un message "NO" aux autres
+\* Chaque intermédiaire inverse les arêtes qui ont transporté un message "NO"
+\* Chaque intermédiaire nettoie ses messages quand il à fini
+DashYoIntermediary(n) == 
     /\ nodeState[n] = "Intermediary"
     /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m
-    /\  \/ IntermediaryYes(n)
-        \/ IntermediaryNo(n)
+    /\  \/  /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
+            /\ LET noNodes == {m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"}
+                IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n] \intersect noNodes]
+                    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesEntering[n] \cup (nodesLeaving[n] \ noNodes)]
+                    /\ msgs' = [m \in Nodes |-> 
+                        IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo"]} 
+                        ELSE IF m = n THEN {} ELSE msgs[m]])
+        \/  /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "YES"
+            /\ LET msgsDashYoPhase == {msg \in msgs[n] : msg.phase = "-Yo"}
+                IN (LET minVal == Min({msg.val : msg \in (msgs[n] \ msgsDashYoPhase)}) 
+                    IN (LET notMinNodes == {m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m /\ msg.val # minVal} 
+                        IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesEntering[n] \ notMinNodes]
+                            /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesLeaving[n] \cup (nodesEntering[n] \intersect notMinNodes)]
+                            /\ msgs' = [m \in Nodes |-> 
+                                IF m \in notMinNodes THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo"]} 
+                                ELSE IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo"]} 
+                                    ELSE IF m = n THEN {} 
+                                        ELSE msgs[m]])))
+    /\ UNCHANGED nodeState
+    
 
 \* Envoi des messages "YES" et "NO" d'une source
-\* Les sources ne font rien pour cette phase
-SendYesNoSource(n) == 
+\* La source n'effectue la phase que si elle à reçu un message de toutes ses sorties
+\* Les sources changent de sens les arêtes qui ont transporté un message "NO"
+\* Les sources décident également si elles deviennent des sinks ou des intermédiaires ou restent des sources
+\* Les sources nettoient leurs messages également
+DashYoSource(n) == 
     /\ nodeState[n] = "Source"
-    /\ UNCHANGED msgs
+    /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m
+    /\  LET noNodes == {m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"}
+        IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n] \intersect noNodes]
+            /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesLeaving[n] \ noNodes]
+            /\ nodeState' = IF noNodes = {} 
+                            THEN nodeState 
+                            ELSE IF nodesLeaving'[n] = {} 
+                                THEN [nodeState EXCEPT ![n] = "Sink"] 
+                                ELSE [nodeState EXCEPT ![n] = "Intermediary"]
+            /\ msgs' = [msgs EXCEPT ![n] = {}])
+
 
 \* Etape "-Yo" comme décrit dans la page wikipedia
-\* Cette étape ne se fait que si tous les sink ont reçus un message de toutes leurs entrées
-\* Chaque sink envoie un message "YES" à la node entrante ayant la plus petite valeur et un message "NO" aux autres
-\* Chaque intermédiaire, quand il à reçu un message de toutes ses sorties, envoie un message "YES" à la node entrante ayant valeur correspondante et un message "NO" aux autres
-\* Les sources ne font rien pour cette phase
 DashYoPhase(n) == 
-    /\ SinksHaveReceived(n)
-    /\  \/ SendYesNoSink(n)
-        \/ SendYesNoIntermediary(n)
-        \/ SendYesNoSource(n)
-    /\ UNCHANGED <<nodeState, nodesEntering, nodesLeaving>>
-
--------------------------------------------------------------
-
-\* Vérifie que toutes les sources ont reçus un message de toutes leurs sorties
-SourcesHaveReceived(n) == \A node \in Nodes : nodeState[node] = "Source" => \A m \in nodesLeaving[node] : \E msg \in msgs[node] : msg.node = m
-
-\* Etape de restructuration pour les sources
-\* Chaque source qui n'a reçu que des messages "NO" devient un sink
-\* Chaque source qui a reçu au moins un message "NO" et un message "YES" devient un intermédiaire
-\* Chaque source qui a reçu que des messages "YES" reste une source
-\* Les nodes entrantes et sortantes sont recalculées
-SourceRestructuration(n) == 
-    /\ nodeState[n] = "Source"
-    /\  \/  /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type # "NO"
-            /\ UNCHANGED << nodeState, nodesEntering, nodesLeaving >>
-        \/  /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type # "YES"
-            /\ nodeState' = [nodeState EXCEPT ![n] = "Sink"]
-            /\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n]]
-            /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = {}]
-        \/  /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "YES"
-            /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
-            /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
-            /\ LET yesNodes == {msg.val : msg \in {m \in msgs[n] : m.type = "YES"}}
-                IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n] \ yesNodes]
-                    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = yesNodes])
-
-\* Etape de restructuration pour les intermédiaires
-\* Chaque intermédiaire qui à reçu que des NO echange ses entrées et sorties
-\* Chaque intermédiaire qui à reçu un message YES échange toutes ses entrées et sorties ayant transporté un message NO
-IntermediaryRestructuration(n) ==
-    /\ nodeState[n] = "Intermediary"
-    /\  \/  /\ \E m \in nodesEntering[n] : \E msg \in msgs[m] : msg.node = n /\ msg.type = "YES"
-            /\ LET noNodes == {msg.val : msg \in {m \in msgs[n] : m.type = "NO"}} \cup {m \in nodesEntering[n] : \E msg \in msgs[m] : msg.node = n /\ msg.type = "NO"}
-                IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = (nodesEntering[n] \ noNodes) \cup (nodesLeaving[n] \intersect noNodes)]
-                    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = (nodesLeaving[n] \ noNodes) \cup (nodesEntering[n] \intersect noNodes)])
-        \/  /\ \A m \in nodesEntering[n] : \E msg \in msgs[m] : msg.node = n /\ msg.type = "NO"
-            /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
-            /\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n]]
-            /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesEntering[n]]
-    /\ UNCHANGED nodeState
-
-\* Etape de restructuration pour les sinks
-\* Chaque sink qui a plus d'1 node entrante devient un intermédiaire, toutes les nodes avec un message NO passent en nodes sortante
-\* Chaque sink qui a 1 seule node entrante reste un sink
-SinkRestructuration(n) == 
-    /\ nodeState[n] = "Sink"
-    /\  \/  /\ Cardinality(nodesEntering[n]) > 1
-            /\ nodeState' = [nodeState EXCEPT ![n] = "Intermediary"]
-            /\ LET noNodes == {m \in nodesEntering[n] : \E msg \in msgs[m] : msg.node = n /\ msg.type = "NO"}
-                IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesEntering[n] \ noNodes]
-                    /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = noNodes])
-        \/  /\ Cardinality(nodesEntering[n]) = 1
-            /\ UNCHANGED << nodeState, nodesLeaving, nodesEntering >>
-
-\* Etape de restructuration comme décrit dans la page wikipedia
-\* Cette phase ne peut se faire que si toutes les sources ont reçut un message de toutes leurs sorties
-\* Chaque source qui a reçu un message "NO" devient un sink ou un intermédiaire
-\* Chaque sink qui a plus d'1 node entrante devient un intermédiaire
-\* Les intermédiaires restent des intermédiaires
-\* Chaque arête qui a reçu un message "NO" est inversée, ce qui implique que chaque node change ses entrées et sorties en consequence
-Restructuration(n) == 
-    /\ SourcesHaveReceived(n)
-    /\  \/ SinkRestructuration(n)
-        \/ IntermediaryRestructuration(n)
-        \/ SourceRestructuration(n)
-    /\ UNCHANGED msgs
+    \/ DashYoSink(n)
+    \/ DashYoIntermediary(n)
+    \/ DashYoSource(n)
 
 -------------------------------------------------------------
 
 \* Définition du prochain état
-YYNext == \E n \in Nodes : YoPhase(n) \/ DashYoPhase(n) \/ Restructuration(n)
+YYNext == \E n \in Nodes : YoPhase(n) \/ DashYoPhase(n)
 
 =============================================================
