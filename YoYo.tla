@@ -57,17 +57,16 @@ Min(set) == CHOOSE x \in set : \A y \in set : x <= y
 \* Chaque source envoie un message contenant son ID à chaque node sortant
 EnvoiIDSource(n) == 
     /\ nodeState[n] = "Source"
-    /\ \A m \in nodesLeaving[n] : 
-        msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, val |-> n]}]
+    /\ msgs' = [m \in Nodes |-> 
+        IF m \in nodesLeaving[n] THEN msgs[m] \cup {[node |-> n, val |-> n]} ELSE msgs[m]]
 
 \* Envoi des messages d'intermédiaire
 \* Si l'intermédiaire à reçu un message de toutes ses entrées, il envoie un message contenant l'ID minimum à chaque node sortant
 EnvoiIDIntermediary(n) == 
     /\ nodeState[n] = "Intermediary"
     /\ \A m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m
-    /\ \A m \in nodesLeaving[n] : 
-        msgs' = [msgs EXCEPT ![m] = 
-            msgs[m] \cup {[node |-> n, val |-> Min({msg.type : msg \in msgs[n]})]}]
+    /\ msgs' = [m \in Nodes |-> 
+        IF m \in nodesLeaving[n] THEN msgs[m] \cup {[node |-> n, val |-> Min({msg.val : msg \in msgs[n]})]} ELSE msgs[m]]
 
 \* Envoi des messages de sink
 \* Les sink ne font rien pour cette phase
@@ -96,26 +95,24 @@ SinksHaveReceived(n) ==
 \* Chaque sink envoie un message "YES" à la node entrante lui ayant envoyé un message avec la plus petite valeur et un message "NO" aux autres
 SendYesNoSink(n) == 
     /\ nodeState[n] = "Sink"
-    /\ \A m \in nodesEntering[n] : 
-        LET msg_m == CHOOSE msg_tmp \in msgs[n] : msg_tmp.node = m
-        IN msgs' = [msgs EXCEPT ![m] = 
-            msgs[m] \cup {[node |-> n, type |-> 
-                IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg_m.val 
-                THEN "YES" ELSE "NO"]}]
+    /\ msgs' = [m \in Nodes |-> 
+        IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> 
+            IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg.val 
+            THEN "YES" ELSE "NO"]} ELSE msgs[m]]
 
 \* Envoi du message "YES" et des messages "NO" d'un intermédiaire
 IntermediaryYes(n) == 
     /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "YES"
-    /\ \A m \in nodesEntering[n] :
-        LET msg_m == CHOOSE msg_tmp \in msgs[n] : msg_tmp.node = m
-        IN msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> 
-            IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg_m.val 
-            THEN "YES" ELSE "NO"]}]
+    /\ msgs' = [m \in Nodes |-> 
+        IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> 
+            IF LET minVal == Min({msg.val : msg \in msgs[n]}) IN minVal = msg.val 
+            THEN "YES" ELSE "NO"]} ELSE msgs[m]]
 
 \* Envoi des messages "NO" d'un intermédiaire
 IntermediaryNo(n) == 
     /\ \E m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"
-    /\ \A m \in nodesEntering[n] : msgs' = [msgs EXCEPT ![m] = msgs[m] \cup {[node |-> n, type |-> "NO"]}]
+    /\ msgs' = [m \in Nodes |-> 
+        IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "NO"]} ELSE msgs[m]]
 
 \* Envoi des messages d'intermédiaire
 \* Si l'intermédiaire à reçu un message de toutes ses sorties, si il à reçu que des "YES", il envoie un message "YES" à la node entrante lui ayant envoyé un message avec la plus petite valeur et un message "NO" aux autres, sinon il envoie "NO" à toutes ses entrées
