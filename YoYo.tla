@@ -47,6 +47,23 @@ YYInit ==
                     ELSE "Intermediary"]
     /\ msgs = [n \in Nodes |-> {}]
 
+\* Définition d'invariants controlant l'état des variables
+
+YYEnteringOK == \A n \in Nodes : nodesEntering[n] \subseteq Neighbors(n)
+
+YYLeavingOK == \A n \in Nodes : nodesLeaving[n] \subseteq Neighbors(n)
+
+YYStateOK == \A n \in Nodes : 
+    /\ nodeState[n] = "Source" => nodesEntering[n] = {}
+    /\ nodeState[n] = "Sink" => nodesLeaving[n] = {}
+    /\ nodeState[n] = "Intermediary" => nodesEntering[n] # {} /\ nodesLeaving[n] # {}
+
+YYMsgsOK == \A n \in Nodes : \A msg \in msgs[n] : 
+    /\ msg.node \in Neighbors(n)
+    /\ msg.phase = "Yo" => msg.val \in Nodes
+
+\* Définition d'un invariant faux quand l'algorithme termine pour regarder l'éxécution de l'algorithme
+\* YYFalse == Cardinality({n \in Nodes : nodeState[n] = "Source"}) > 1
 
 -------------------------------------------------------------
 
