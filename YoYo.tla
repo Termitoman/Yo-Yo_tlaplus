@@ -149,7 +149,7 @@ DashYoIntermediary(n) ==
     /\ \A m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.phase = "-Yo"
     /\  LET msgsDashYoPhase == {msg \in msgs[n] : msg.phase = "-Yo"}
         IN (\/  /\ \E m \in nodesLeaving[n] : \E msg \in msgsDashYoPhase : msg.node = m /\ msg.type = "NO"
-                /\ LET noNodes == {m \in nodesLeaving[n] : \E msg \in msgs[n] : msg.node = m /\ msg.type = "NO"}
+                /\ LET noNodes == {m \in nodesLeaving[n] : \E msg \in msgsDashYoPhase : msg.node = m /\ msg.type = "NO"}
                     IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n] \intersect noNodes]
                         /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesEntering[n] \cup (nodesLeaving[n] \ noNodes)]
                         /\ msgs' = [m \in Nodes |-> 

@@ -1,0 +1,40 @@
+Success Fingerprint collision probability: 3.5E-18
+Start: 15:14:42 (Feb 16), end: 15:14:43 (Feb 16)
+
+States
+Time	Diameter	Found	Distinct	Queue
+00:00:00	11	20	16	0
+ 
+Coverage
+Module	Action	Total	Distinct
+MCYoYo	YYInit	1	1
+MCYoYo	YYNext	19	15
+
+---------------------------------------------------------
+
+Success Fingerprint collision probability: 4.3E-15
+Start: 15:14:19 (Feb 16), end: 15:14:20 (Feb 16)
+
+States
+Time	Diameter	Found	Distinct	Queue
+00:00:00	0	1	1	1
+00:00:01	34	563	309	0
+ 
+Coverage
+Module	Action	Total	Distinct
+MCYoYo	YYInit	1	1
+MCYoYo	YYNext	562	308
+
+---------------------------------------------------------
+
+Success Fingerprint collision probability: 8.7E-9
+Start: 15:09:55 (Feb 16), end: 15:12:13 (Feb 16)
+
+States
+Time	Diameter	Found	Distinct	Queue
+00:00:00	0	1	1	1
+ 
+Coverage
+Module	Action	Total	Distinct
+MCYoYo	YYInit	1	1
+MCYoYo	YYNext	962 729	214 429
