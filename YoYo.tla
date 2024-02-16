@@ -44,7 +44,7 @@ YYInit ==
     /\ nodesEntering = [n \in Nodes |-> { m \in Neighbors(n) : m < n}]
     /\ nodesLeaving = [n \in Nodes |-> { m \in Neighbors(n) : m > n}]
     /\ nodeState = [n \in Nodes |-> 
-                    IF nodesEntering[n] = {} /\ nodesLeaving[n] = {} THEN "Leader"
+                    IF nodesEntering[n] = {} /\ nodesLeaving[n] = {} /\ Cardinality(Nodes) THEN "Leader"
                     ELSE IF nodesLeaving[n] = Neighbors(n) THEN "Source"
                     ELSE IF nodesEntering[n] = Neighbors(n) THEN "Sink"
                     ELSE "Intermediary"]
