@@ -17,9 +17,9 @@ MCYoYo	YYNext	19	15
 
 \* TLC avec YYFalse, nodeState
 <<
-  "Source",
-  "Sink",
-  "Intermediary"
+  "Leader", 
+  "Sink", 
+  "Sink"
 >>
 
 ---------------------------------------------------------
