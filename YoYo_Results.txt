@@ -1,3 +1,8 @@
+\* Configuration
+NbNodes = 3
+Edges == { {1,3}, {2,3} }
+
+\* TLC sans YYFalse
 Success Fingerprint collision probability: 3.5E-18
 Start: 15:14:42 (Feb 16), end: 15:14:43 (Feb 16)
 
@@ -10,8 +15,20 @@ Module	Action	Total	Distinct
 MCYoYo	YYInit	1	1
 MCYoYo	YYNext	19	15
 
+\* TLC avec YYFalse, nodeState
+<<
+  "Source",
+  "Sink",
+  "Intermediary"
+>>
+
 ---------------------------------------------------------
 
+\* Configuration
+NbNodes = 9
+Edges == { {1, 2}, {1, 4}, {2, 4}, {2, 7}, {3, 4}, {3, 6}, {5, 6}, {5, 7}, {5, 9}, {6, 8}, {6, 9}, {7, 8} }
+
+\* TLC sans YYFalse
 Success Fingerprint collision probability: 4.3E-15
 Start: 15:14:19 (Feb 16), end: 15:14:20 (Feb 16)
 
@@ -25,8 +42,26 @@ Module	Action	Total	Distinct
 MCYoYo	YYInit	1	1
 MCYoYo	YYNext	562	308
 
+\* TLC avec YYFalse, nodeState
+<<
+  "Source",
+  "Intermediary",
+  "Sink",
+  "Intermediary",
+  "Sink",
+  "Intermediary",
+  "Intermediary",
+  "Intermediary",
+  "Intermediary"
+>>
+
 ---------------------------------------------------------
 
+\* Configuration
+NbNodes = 19
+Edges == { {1,7}, {1, 9}, {1, 10}, {2, 3}, {2, 8}, {2, 11}, {3, 4}, {3, 15}, {4, 16}, {5, 7}, {5, 8}, {5, 12}, {6, 10}, {6, 13}, {7, 9}, {8, 12}, {10, 13}, {11, 15}, {11, 16}, {12, 14}, {12, 17}, {14, 18}, {14, 19}, {15, 16}, {17, 18}, {17, 19} }
+
+\* TLC sans YYFalse
 Success Fingerprint collision probability: 8.7E-9
 Start: 15:09:55 (Feb 16), end: 15:12:13 (Feb 16)
 
@@ -38,3 +73,26 @@ Coverage
 Module	Action	Total	Distinct
 MCYoYo	YYInit	1	1
 MCYoYo	YYNext	962 729	214 429
+
+\* TLC avec YYFalse, nodeState
+<<
+  "Source",
+  "Intermediary",
+  "Intermediary",
+  "Intermediary",
+  "Intermediary",
+  "Sink",
+  "Intermediary",
+  "Intermediary",
+  "Sink",
+  "Intermediary",
+  "Intermediary",
+  "Intermediary",
+  "Intermediary",
+  "Intermediary",
+  "Intermediary",
+  "Sink",
+  "Intermediary",
+  "Sink",
+  "Sink"
+>>
