@@ -69,7 +69,7 @@ YYMsgsOK == \A n \in Nodes :
     /\ \A m \in Neighbors(n) : Cardinality({msg \in msgs[n] : msg.node = m /\ msg.phase = "-Yo"}) <= 1
 
 \* Définition d'un invariant faux quand l'algorithme termine pour regarder l'éxécution de l'algorithme
-\* YYFalse == Cardinality({n \in Nodes : nodeState[n] = "Source"}) > 1
+YYFalse == Cardinality({n \in Nodes : nodeState[n] = "Source"}) > 1
 
 -------------------------------------------------------------
 
