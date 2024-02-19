@@ -187,7 +187,7 @@ DashYoIntermediary(n) ==
                     IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = (nodesLeaving[n] \ prunedNodes) \intersect noNodes]
                         /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesEntering[n] \cup ((nodesLeaving[n] \ prunedNodes) \ noNodes)]
                         /\ msgs' = [m \in Nodes |-> 
-                            IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo", pruned |-> FALSE]} 
+                            IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo", pruned |-> IsntChosenNode(m, n)]} 
                             ELSE IF m = n THEN {} ELSE msgs[m]])
                 ELSE LET minVal == Min({msg.val : msg \in (msgs[n] \ msgsDashYoPhase)})
                     IN (LET notMinNodes == {m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m /\ msg.val # minVal} 
