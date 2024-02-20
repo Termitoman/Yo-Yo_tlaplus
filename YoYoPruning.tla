@@ -150,23 +150,32 @@ DashYoSink(n) ==
         THEN (
             /\ pruned' = [pruned EXCEPT ![n] = TRUE] 
             /\ msgs' = [m \in Nodes |-> 
-                IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo", pruned |-> TRUE]} 
-                ELSE IF m = n THEN {} ELSE msgs[m]]
+                IF m \in nodesEntering[n] 
+                THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo", pruned |-> TRUE]} 
+                ELSE IF m = n 
+                THEN {} 
+                ELSE msgs[m]]
             /\ nodesEntering' = [nodesEntering EXCEPT ![n] = {}]
             /\ UNCHANGED <<nodesLeaving, phase>>)
-        ELSE (
-            /\ LET minVal == Min({msg.val : msg \in msgs[n]}) 
-                IN (LET notMinNodes == {m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m /\ msg.val # minVal} 
-                    IN (LET nodesToPrune == {m \in nodesEntering[n] : IsntChosenNode(m, n)}
-                        IN (/\ msgs' = [m \in Nodes |-> 
-                                IF m \in notMinNodes THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo", pruned |-> IsntChosenNode(m, n)]} 
-                                ELSE IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo", pruned |-> IsntChosenNode(m, n)]} 
-                                    ELSE IF m = n THEN {} 
-                                        ELSE msgs[m]]
-                            /\ nodesEntering' = [nodesEntering EXCEPT ![n] = (nodesEntering[n] \ nodesToPrune) \ notMinNodes]
-                            /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = notMinNodes])))
-            /\ phase' = [phase EXCEPT ![n] = "Yo"] 
-            /\ UNCHANGED pruned)
+        ELSE (  LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo"}
+                    valsRcvd == {msg.val : msg \in msgsYoPhase} 
+                    minVal == Min(valsRcvd)
+                    senders(v) == {m \in nodesEntering[n] :
+                        [phase |-> "Yo", node |-> m, val |-> v] \in msgs[n]}
+                    value(m) == (CHOOSE msg \in msgsYoPhase : msg.node = m).val
+                IN  (\E keep \in {f \in [valsRcvd -> nodesEntering[n]] :
+                    \A v \in valsRcvd : f[v] \in senders(v)} :
+                        /\ msgs' = [m \in Nodes |->
+                            IF m \in senders(minVal)
+                            THEN msgs[m] \cup {[phase |-> "-Yo", node |-> n, type |-> "YES", pruned |-> m # keep[minVal]]}
+                            ELSE IF m \in nodesEntering[n]
+                            THEN msgs[m] \cup {[phase |-> "-Yo", node |-> n, type |-> "NO", pruned |-> m # keep[value(m)]]}
+                            ELSE IF m = n THEN {}
+                            ELSE msgs[m]]
+                        /\ nodesEntering' = [nodesEntering EXCEPT ![n] = {keep[minVal]}]
+                        /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = {keep[v] : v \in (valsRcvd \ {minVal})}]))
+    /\ phase' = [phase EXCEPT ![n] = "Yo"]
+    /\ UNCHANGED pruned
 
 \* Envoi des messages d'intermédiaire
 \* L'intérmédiaire n'effectue la phase que si il à reçu un message de toutes ses sorties et qu'il n'est pas élagué (pas sensé arriver)
@@ -184,21 +193,39 @@ DashYoIntermediary(n) ==
         IN (LET prunedNodes == LET prunedMsg == {msg \in msgsDashYoPhase : msg.pruned = TRUE} IN ({msg.node : msg \in prunedMsg})
             IN (IF \E m \in nodesLeaving[n] : \E msg \in msgsDashYoPhase : msg.node = m /\ msg.type = "NO"
                 THEN LET noNodes == {m \in nodesLeaving[n] \ prunedNodes : \E msg \in msgsDashYoPhase : msg.node = m /\ msg.type = "NO"}
-                    IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = (nodesLeaving[n] \ prunedNodes) \intersect noNodes]
-                        /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesEntering[n] \cup ((nodesLeaving[n] \ prunedNodes) \ noNodes)]
-                        /\ msgs' = [m \in Nodes |-> 
-                            IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo", pruned |-> IsntChosenNode(m, n)]} 
-                            ELSE IF m = n THEN {} ELSE msgs[m]])
-                ELSE LET minVal == Min({msg.val : msg \in (msgs[n] \ msgsDashYoPhase)})
-                    IN (LET notMinNodes == {m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m /\ msg.val # minVal} 
-                        IN (LET nodesToPrune == {m \in nodesEntering[n] : IsntChosenNode(m, n)}
-                            IN  (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = (nodesEntering[n] \ nodesToPrune) \ notMinNodes]
-                                /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = (nodesLeaving[n] \ prunedNodes) \cup notMinNodes]
-                                /\ msgs' = [m \in Nodes |-> 
-                                    IF m \in notMinNodes THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo", pruned |-> IsntChosenNode(m, n)]} 
-                                    ELSE IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo", pruned |-> IsntChosenNode(m, n)]} 
-                                        ELSE IF m = n THEN {} 
-                                            ELSE msgs[m]])))))
+                    IN (LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo"}
+                            valsRcvd == {msg.val : msg \in msgsYoPhase} 
+                            senders(v) == {m \in nodesEntering[n] :
+                                [phase |-> "Yo", node |-> m, val |-> v] \in msgs[n]}
+                            value(m) == (CHOOSE msg \in msgsYoPhase : msg.node = m).val 
+                        IN  (\E keep \in {f \in [valsRcvd -> nodesEntering[n]] :
+                            \A v \in valsRcvd : f[v] \in senders(v)} :
+                                /\ msgs' = [m \in Nodes |->
+                                    IF m \in nodesEntering[n]
+                                    THEN msgs[m] \cup {[phase |-> "-Yo", node |-> n, type |-> "NO", pruned |-> m # keep[value(m)]]}
+                                    ELSE IF m = n 
+                                    THEN {msg \in msgs[n] : msg.phase = "Yo" /\ \E msg2 \in msgsDashYoPhase : msg2.node = msg.node}
+                                    ELSE msgs[m]]
+                                /\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n] \intersect noNodes]
+                                /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = ((nodesLeaving[n] \ prunedNodes) \ noNodes) \cup {keep[v] : v \in (valsRcvd)}]))
+                ELSE LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo"}
+                        valsRcvd == {msg.val : msg \in msgsYoPhase} 
+                        minVal == Min(valsRcvd)
+                        senders(v) == {m \in nodesEntering[n] :
+                            [phase |-> "Yo", node |-> m, val |-> v] \in msgs[n]}
+                        value(m) == (CHOOSE msg \in msgsYoPhase : msg.node = m).val
+                    IN  (\E keep \in {f \in [valsRcvd -> nodesEntering[n]] :
+                        \A v \in valsRcvd : f[v] \in senders(v)} :
+                            /\ msgs' = [m \in Nodes |->
+                                IF m \in senders(minVal)
+                                THEN msgs[m] \cup {[phase |-> "-Yo", node |-> n, type |-> "YES", pruned |-> m # keep[minVal]]}
+                                ELSE IF m \in nodesEntering[n]
+                                THEN msgs[m] \cup {[phase |-> "-Yo", node |-> n, type |-> "NO", pruned |-> m # keep[value(m)]]}
+                                ELSE IF m = n 
+                                THEN {msg \in msgs[n] : msg.phase = "Yo" /\ \E msg2 \in msgsDashYoPhase : msg2.node = msg.node}
+                                ELSE msgs[m]]
+                            /\ nodesEntering' = [nodesEntering EXCEPT ![n] = {keep[minVal]}]
+                            /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = (nodesLeaving[n] \ prunedNodes) \cup {keep[v] : v \in (valsRcvd \ {minVal})}])))
     /\ phase' = [phase EXCEPT ![n] = "Yo"]
     /\ UNCHANGED pruned
 
@@ -218,7 +245,7 @@ DashYoSource(n) ==
             IN  LET noNodes == {m \in nodesLeaving[n] \ prunedNodes : \E msg \in msgsDashYoPhase : msg.node = m /\ msg.type = "NO"}
                 IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = noNodes]
                     /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = (nodesLeaving[n] \ prunedNodes) \ noNodes]
-                    /\ msgs' = [msgs EXCEPT ![n] = {}]))
+                    /\ msgs' = [msgs EXCEPT ![n] = {msg \in msgs[n] : msg.phase = "Yo" /\ \E msg2 \in msgsDashYoPhase : msg2.node = msg.node}]))
     /\ phase' = [phase EXCEPT ![n] = "Yo"]
     /\ UNCHANGED pruned
 

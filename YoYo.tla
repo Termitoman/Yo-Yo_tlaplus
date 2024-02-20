@@ -133,10 +133,13 @@ DashYoSink(n) ==
     /\ LET minVal == Min({msg.val : msg \in msgs[n]}) 
         IN (LET notMinNodes == {m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m /\ msg.val # minVal} 
             IN (/\ msgs' = [m \in Nodes |-> 
-                    IF m \in notMinNodes THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo"]} 
-                    ELSE IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo"]} 
-                        ELSE IF m = n THEN {} 
-                            ELSE msgs[m]]
+                    IF m \in notMinNodes 
+                    THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo"]} 
+                    ELSE IF m \in nodesEntering[n] 
+                    THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo"]} 
+                    ELSE IF m = n 
+                    THEN {} 
+                    ELSE msgs[m]]
                 /\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesEntering[n] \ notMinNodes]
                 /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = notMinNodes]))
     /\ phase' = [phase EXCEPT ![n] = "Yo"]
@@ -157,17 +160,23 @@ DashYoIntermediary(n) ==
                  IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n] \intersect noNodes]
                      /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesEntering[n] \cup (nodesLeaving[n] \ noNodes)]
                      /\ msgs' = [m \in Nodes |-> 
-                        IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo"]} 
-                        ELSE IF m = n THEN {} ELSE msgs[m]])
+                        IF m \in nodesEntering[n] 
+                        THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo"]} 
+                        ELSE IF m = n 
+                        THEN {msg \in msgs[n] : msg.phase = "Yo" /\ \E msg2 \in msgsDashYoPhase : msg2.node = msg.node} 
+                        ELSE msgs[m]])
             ELSE LET minVal == Min({msg.val : msg \in (msgs[n] \ msgsDashYoPhase)})
                  IN (LET notMinNodes == {m \in nodesEntering[n] : \E msg \in msgs[n] : msg.node = m /\ msg.val # minVal} 
                      IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesEntering[n] \ notMinNodes]
                          /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesLeaving[n] \cup notMinNodes]
                          /\ msgs' = [m \in Nodes |-> 
-                            IF m \in notMinNodes THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo"]} 
-                            ELSE IF m \in nodesEntering[n] THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo"]} 
-                                ELSE IF m = n THEN {} 
-                                    ELSE msgs[m]])))
+                            IF m \in notMinNodes 
+                            THEN msgs[m] \cup {[node |-> n, type |-> "NO", phase |-> "-Yo"]} 
+                            ELSE IF m \in nodesEntering[n] 
+                            THEN msgs[m] \cup {[node |-> n, type |-> "YES", phase |-> "-Yo"]} 
+                            ELSE IF m = n 
+                            THEN {msg \in msgs[n] : msg.phase = "Yo" /\ \E msg2 \in msgsDashYoPhase : msg2.node = msg.node} 
+                            ELSE msgs[m]])))
     /\ phase' = [phase EXCEPT ![n] = "Yo"]
     /\ UNCHANGED nodeState
     
@@ -185,7 +194,7 @@ DashYoSource(n) ==
         IN (LET noNodes == {m \in nodesLeaving[n] : \E msg \in msgsDashYoPhase : msg.node = m /\ msg.type = "NO"}
             IN (/\ nodesEntering' = [nodesEntering EXCEPT ![n] = noNodes]
                 /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = nodesLeaving[n] \ noNodes]
-                /\ msgs' = [msgs EXCEPT ![n] = {}]))
+                /\ msgs' = [msgs EXCEPT ![n] = {msg \in msgs[n] : msg.phase = "Yo" /\ \E msg2 \in msgsDashYoPhase : msg2.node = msg.node}]))
     /\ phase' = [phase EXCEPT ![n] = "Yo"]
 
 
