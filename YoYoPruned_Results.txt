@@ -2,25 +2,23 @@
 NbNodes = 3
 Edges == { {1,3}, {2,3} }
 
-\* TLC sans YYFalse
-Success Fingerprint collision probability: 3.6E-18
-Start: 23:00:10 (Feb 16), end: 23:00:11 (Feb 16)
+\* TLC Result
+Start: 16:49:01 (Feb 21), end: 16:49:02 (Feb 21)
 
 States
 Time	Diameter	Found	Distinct	Queue
-00:00:00	17	25	22	0
+00:00:00	0	1	1	1
+00:00:01	17	25	21	0
  
 Coverage
 Module	Action	Total	Distinct
-MCYoYo	YYInit	1	1
-MCYoYo	YYNext	24	21
+MCYoYo	YYInit	2	2
+MCYoYo	YYNext	44	20
+Errors
+Deadlock reached.
 
-\* TLC avec YYFalse, nodeState
-<<
-  "Leader", 
-  "Sink", 
-  "Sink"
->>
+\* final nodeState
+<<"Leader", "Sink", "Sink">>
 
 ---------------------------------------------------------
 
@@ -28,27 +26,22 @@ MCYoYo	YYNext	24	21
 NbNodes = 4
 Edges == { {1, 2}, {1, 3}, {2, 3}, {3, 4} }
 
-\* TLC sans YYFalse
-Success Fingerprint collision probability: 4.1E-18
-Start: 22:59:46 (Feb 16), end: 22:59:46 (Feb 16)
+\* TLC Result
+Start: 16:48:19 (Feb 21), end: 16:48:19 (Feb 21)
 
 States
 Time	Diameter	Found	Distinct	Queue
-00:00:00	15	23	19	0
+00:00:00	18	36	31	0
  
 Coverage
 Module	Action	Total	Distinct
-MCYoYo	YYInit	1	1
-MCYoYo	YYNext	22	18
+MCYoYo	YYInit	2	2
+MCYoYo	YYNext	52	30
+Errors
+Deadlock reached.
 
-
-\* TLC avec YYFalse, nodeState
-<<
-  "Leader",
-  "Sink",
-  "Sink",
-  "Sink"
->>
+\* final nodeState
+<<"Leader", "Sink", "Sink", "Sink">>
 
 ---------------------------------------------------------
 
@@ -56,32 +49,22 @@ MCYoYo	YYNext	22	18
 NbNodes = 9
 Edges == { {1, 2}, {1, 4}, {2, 4}, {2, 7}, {3, 4}, {3, 6}, {5, 6}, {5, 7}, {5, 9}, {6, 8}, {6, 9}, {7, 8} }
 
-\* TLC sans YYFalse
-Success Fingerprint collision probability: 9.1E-15
-Start: 23:01:43 (Feb 16), end: 23:01:44 (Feb 16)
+\* TLC Result
+Start: 16:32:29 (Feb 21), end: 16:32:31 (Feb 21)
 
 States
 Time	Diameter	Found	Distinct	Queue
 00:00:00	0	1	1	1
-00:00:01	85	823	454	0
  
 Coverage
 Module	Action	Total	Distinct
-MCYoYo	YYInit	1	1
-MCYoYo	YYNext	822	453
+MCYoYo	YYInit	2	2
+MCYoYo	YYNext	3 876	1 766
+Errors
+Deadlock reached.
 
-\* TLC avec YYFalse, nodeState
-<<
-  "Leader",
-  "Sink",
-  "Sink",
-  "Sink",
-  "Sink",
-  "Sink",
-  "Sink",
-  "Sink",
-  "Sink"
->>
+\* final nodeState
+<<"Leader", "Sink", "Sink", "Sink", "Sink", "Sink", "Sink", "Sink", "Sink">>
 
 ---------------------------------------------------------
 
@@ -89,30 +72,9 @@ MCYoYo	YYNext	822	453
 NbNodes = 19
 Edges == { {1,7}, {1, 9}, {1, 10}, {2, 3}, {2, 8}, {2, 11}, {3, 4}, {3, 15}, {4, 16}, {5, 7}, {5, 8}, {5, 12}, {6, 10}, {6, 13}, {7, 9}, {8, 12}, {10, 13}, {11, 15}, {11, 16}, {12, 14}, {12, 17}, {14, 18}, {14, 19}, {15, 16}, {17, 18}, {17, 19} }
 
-\* TLC sans YYFalse
-Success Fingerprint collision probability: 4.2E-7
-Start: 23:03:00 (Feb 16), end: 23:18:30 (Feb 16)
+\* TLC Result
 
-States
-Time	Diameter	Found	Distinct	Queue
-00:00:00	0	1	1	1
- 
-Coverage
-Module	Action	Total	Distinct
-MCYoYo	YYInit	1	1
-MCYoYo	YYNext	7 447 326	1 234 743
 
-\* TLC avec YYFalse, nodeState
-\* N'est pas sensé donner un succès
 
-Success Fingerprint collision probability: 4.2E-7
-Start: 23:27:40 (Feb 16), end: 23:43:45 (Feb 16)
+\* final nodeState
 
-States
-Time	Diameter	Found	Distinct	Queue
-00:00:00	0	1	1	1
- 
-Coverage
-Module	Action	Total	Distinct
-MCYoYo	YYInit	1	1
-MCYoYo	YYNext	7 447 326	1 234 743
