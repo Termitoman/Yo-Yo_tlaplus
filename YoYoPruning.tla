@@ -157,7 +157,7 @@ DashYoSink(n) ==
                 ELSE msgs[m]]
             /\ nodesEntering' = [nodesEntering EXCEPT ![n] = {}]
             /\ UNCHANGED <<nodesLeaving, phase>>)
-        ELSE (  LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo"}
+        ELSE (  LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo" /\ msg.node \in nodesEntering[n]}
                     valsRcvd == {msg.val : msg \in msgsYoPhase} 
                     minVal == Min(valsRcvd)
                     senders(v) == {m \in nodesEntering[n] :
@@ -173,9 +173,10 @@ DashYoSink(n) ==
                             ELSE IF m = n THEN {}
                             ELSE msgs[m]]
                         /\ nodesEntering' = [nodesEntering EXCEPT ![n] = {keep[minVal]}]
-                        /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = {keep[v] : v \in (valsRcvd \ {minVal})}]))
-    /\ phase' = [phase EXCEPT ![n] = "Yo"]
-    /\ UNCHANGED pruned
+                        /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = {keep[v] : v \in (valsRcvd \ {minVal})}]
+                        /\ phase' = [phase EXCEPT ![n] = "Yo"]
+                        /\ UNCHANGED pruned))
+    
 
 \* Envoi des messages d'intermédiaire
 \* L'intérmédiaire n'effectue la phase que si il à reçu un message de toutes ses sorties et qu'il n'est pas élagué (pas sensé arriver)
@@ -193,7 +194,7 @@ DashYoIntermediary(n) ==
         IN (LET prunedNodes == LET prunedMsg == {msg \in msgsDashYoPhase : msg.pruned = TRUE} IN ({msg.node : msg \in prunedMsg})
             IN (IF \E m \in nodesLeaving[n] : \E msg \in msgsDashYoPhase : msg.node = m /\ msg.type = "NO"
                 THEN LET noNodes == {m \in nodesLeaving[n] \ prunedNodes : \E msg \in msgsDashYoPhase : msg.node = m /\ msg.type = "NO"}
-                    IN (LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo"}
+                    IN (LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo" /\ msg.node \in nodesEntering[n]}
                             valsRcvd == {msg.val : msg \in msgsYoPhase} 
                             senders(v) == {m \in nodesEntering[n] :
                                 [phase |-> "Yo", node |-> m, val |-> v] \in msgs[n]}
@@ -208,7 +209,7 @@ DashYoIntermediary(n) ==
                                     ELSE msgs[m]]
                                 /\ nodesEntering' = [nodesEntering EXCEPT ![n] = nodesLeaving[n] \intersect noNodes]
                                 /\ nodesLeaving' = [nodesLeaving EXCEPT ![n] = ((nodesLeaving[n] \ prunedNodes) \ noNodes) \cup {keep[v] : v \in (valsRcvd)}]))
-                ELSE LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo"}
+                ELSE LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo" /\ msg.node \in nodesEntering[n]}
                         valsRcvd == {msg.val : msg \in msgsYoPhase} 
                         minVal == Min(valsRcvd)
                         senders(v) == {m \in nodesEntering[n] :
