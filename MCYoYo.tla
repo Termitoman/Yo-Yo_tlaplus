@@ -16,4 +16,7 @@ vars == <<nodeState, nodesEntering, nodesLeaving, msgs, phase, pruned>>
 \*vars == <<nodeState, nodesEntering, nodesLeaving, msgs, phase>>
 
 YYSpec == YYInit /\ [][YYNext]_vars /\ WF_vars(YYNext)
+
+\* Définition de l'invariant représentant la seule deadlock correcte de l'algorithme
+DeadlockCorrect == ~(ENABLED YYNext) => Termination
 =======================
