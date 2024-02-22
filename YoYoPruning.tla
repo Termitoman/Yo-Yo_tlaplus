@@ -127,13 +127,6 @@ ComputeState(nEnter, nLeave, prnd, previous) ==
     ELSE IF nLeave = {} THEN "Sink"
     ELSE "Intermediary"
 
-\* Opérateur qui indique si la node est la node choisie parmi les nodes ayant envoyé un message avec la même valeur que le message que cette node à envoyé
-IsntChosenNode(m, n) ==
-    LET msgsYoPhase == {msg \in msgs[n] : msg.phase = "Yo"}
-    IN  (LET msg_m == CHOOSE msg \in msgsYoPhase : msg.node = m
-        IN  LET winner == CHOOSE msg \in msgsYoPhase : msg.val = msg_m.val
-            IN  m # winner.node) 
-
 \* Envoi des messages de sink
 \* Le sink n'effectue la phase que si il à reçu un message de toutes ses entrées et qu'il n'est pas élagué
 \* Chaque sink envoie un message "YES" à la node entrante lui ayant envoyé un message avec la plus petite valeur et un message "NO" aux autres
