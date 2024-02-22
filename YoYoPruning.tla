@@ -72,7 +72,7 @@ YYMsgsOK == \A n \in Nodes :
     /\ \A m \in Neighbors(n) : Cardinality({msg \in msgs[n] : msg.node = m /\ msg.phase = "-Yo"}) <= 1
 
 \* Définition de l'invariant représentant la seule terminaison correcte de l'algorithme
-Termination == \E n \in Nodes : nodeState[n] = "Leader" /\ \A m \in Nodes \ {n} : pruned[m]
+Terminated == \E n \in Nodes : nodeState[n] = "Leader" /\ \A m \in Nodes \ {n} : pruned[m]
 
 -------------------------------------------------------------
 

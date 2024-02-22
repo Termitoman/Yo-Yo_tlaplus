@@ -71,6 +71,12 @@ YYMsgsOK == \A n \in Nodes :
 \* Définition d'un invariant faux quand l'algorithme termine pour regarder l'éxécution de l'algorithme
 YYFalse == Cardinality({n \in Nodes : nodeState[n] = "Source"}) > 1
 
+\* Définition d'un opérateur qui vérifie la terminaison de l'algorithme
+Terminated == 
+    /\ Cardinality({n \in Nodes : nodeState[n] = "Source"}) = 1
+    /\ \A n \in Nodes : \A msg \in msgs[n] : msg.phase = "-Yo" => msg.type = "YES"
+    /\ \E s \in Nodes : nodeState[s] = "Source" /\ \A n \in Nodes : \A msg \in msgs[n] : msg.phase = "Yo" => msg.val = s
+
 -------------------------------------------------------------
 
 \* Minimum d'un set d'entiers
