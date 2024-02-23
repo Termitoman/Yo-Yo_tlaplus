@@ -21,5 +21,5 @@ YYSpec == YYInit /\ [][YYNext]_vars /\ WF_vars(YYNext)
 DeadlockCorrect == ~(ENABLED YYNext) => Terminated
 
 \* Définition de l'invariant représentant la seule terminaison correcte de l'algorithme
-TerminationCorrect == <>(Terminated)
+TerminationCorrect == <>[](Terminated)
 =======================
