@@ -11,11 +11,12 @@ CONSTANT Nodes, Edges
 \* Vérifie que les données en entrée sont correctes
 ASSUME  /\ Nodes \subseteq Int
         /\ Nodes # {} 
+        /\ \A n \in Nodes : \A m \in (Nodes \ n) : n # m
         /\ Edges \subseteq SUBSET Nodes
         /\ \A e \in Edges : Cardinality(e) = 2  \* en particulier cela exclut des auto-boucles
         \*/\ \A n \in Nodes : \E m \in Nodes : \E e \in Edges : ~(n = m) /\ (\E x \in e : \E y \in e : ~(x = y) /\ x = n /\ y = m)
 
-\* nodeState : Pour chaque node, son état actuel (Source, Sink, Intermediary, NotProcessed)
+\* nodeState : Pour chaque node, son état actuel (Source, Sink, Intermediary)
 \* nodesEntering : Pour chaque node, l'ensemble des nodes qui entrent dans ce node (arêtes orientées vers ce node)
 \* nodesLeaving : Pour chaque node, l'ensemble des nodes qui sortent de ce node (arêtes orientées depuis ce node)
 \* msgs : Pour chaque node, l'ensemble des messages qu'il a reçu
